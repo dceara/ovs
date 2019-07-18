@@ -3597,6 +3597,10 @@ tcp.flags = RST;
       <code>ovn-controller</code> reads this value and flushes all learned
       multicast groups when it detects that <code>seq_no</code> was changed.
     </column>
+    <column name="installed_groups">
+      <code>ovn-northd</code> writes this column to track the number of active
+      <ref table="Logical_Flow"/> entries installed for multicast groups.
+    </column>
 
     <group title="Querier configuration options">
       The <code>ovn-controller</code> process that runs on OVN hypervisor

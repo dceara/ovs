@@ -456,6 +456,8 @@ struct mcast_info {
     struct hmap group_tnlids;
     uint32_t group_tnlid_hint;
     uint32_t active_flows;
+
+    const struct sbrec_ip_multicast *sb;
 };
 
 static uint32_t
@@ -762,7 +764,6 @@ init_mcast_info_for_datapath(struct ovn_datapath *od)
 
     hmap_init(&mcast_info->group_tnlids);
     mcast_info->group_tnlid_hint = OVN_MIN_IP_MULTICAST;
-    mcast_info->active_flows = 0;
 }
 
 static void
@@ -770,6 +771,8 @@ store_mcast_info_for_datapath(const struct sbrec_ip_multicast *sb,
                               struct ovn_datapath *od)
 {
     struct mcast_info *mcast_info = &od->mcast_info;
+
+    mcast_info->sb = sb;
 
     sbrec_ip_multicast_set_datapath(sb, od->sb);
     sbrec_ip_multicast_set_enabled(sb, &mcast_info->enabled, 1);
@@ -788,6 +791,8 @@ store_mcast_info_for_datapath(const struct sbrec_ip_multicast *sb,
     if (mcast_info->ipv4_src) {
         sbrec_ip_multicast_set_ip4_src(sb, mcast_info->ipv4_src);
     }
+
+    sbrec_ip_multicast_set_installed_groups(sb, 0);
 }
 
 static void
@@ -5281,6 +5286,17 @@ build_lswitch_flows(struct hmap *datapaths, struct hmap *ports,
                       ds_cstr(&match), ds_cstr(&actions));
     }
 
+    HMAP_FOR_EACH (od, key_node, datapaths) {
+        struct mcast_info *mcast_info = &od->mcast_info;
+
+        if (!mcast_info->sb) {
+            continue;
+        }
+
+        sbrec_ip_multicast_set_installed_groups(mcast_info->sb,
+                                                mcast_info->active_flows);
+    }
+
     /* Ingress table 17: Destination lookup, unicast handling (priority 50), */
     HMAP_FOR_EACH (op, key_node, ports) {
         if (!op->nbsp || lsp_is_external(op->nbsp)) {
@@ -9363,6 +9379,8 @@ main(int argc, char *argv[])
                        &sbrec_ip_multicast_col_query_interval);
     add_column_noalert(ovnsb_idl_loop.idl,
                        &sbrec_ip_multicast_col_query_max_resp);
+    add_column_noalert(ovnsb_idl_loop.idl,
+                       &sbrec_ip_multicast_col_installed_groups);
 
     struct ovsdb_idl_index *sbrec_chassis_by_name
         = chassis_index_create(ovnsb_idl_loop.idl);
