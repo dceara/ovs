@@ -632,6 +632,12 @@ thread_is_pmd(void)
     return !strncmp(name, "pmd", 3);
 }
 
+bool
+thread_is_northd(void)
+{
+    const char *name = get_subprogram_name();
+    return !strcmp(name, "northd");
+}
 
 /* ovsthread_key. */
 

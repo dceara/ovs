@@ -232,6 +232,34 @@ poll_immediate_wake_at(const char *where)
     poll_timer_wait_at(0, where);
 }
 
+//TODO
+static int northd_last_cpu_usage;
+static bool northd_high_cpu;
+#define NORTHD_HIGH_CPU_LOW_THRESH 95
+#define NORTHD_HIGH_CPU_HIGH_THRESH 99
+
+//TODO
+static void update_northd_cpu_usage(int cpu_usage)
+{
+    //TODO
+    if (!northd_high_cpu && cpu_usage >= NORTHD_HIGH_CPU_HIGH_THRESH &&
+            cpu_usage >= northd_last_cpu_usage) {
+        northd_high_cpu = true;
+        VLOG_INFO("NORTHD HIGH CPU");
+    } else if (northd_high_cpu && cpu_usage <= NORTHD_HIGH_CPU_LOW_THRESH) {
+        northd_high_cpu = false;
+        VLOG_INFO("NORTHD NO HIGH CPU");
+    }
+
+    northd_last_cpu_usage = cpu_usage;
+}
+
+//TODO
+bool northd_is_cpu_usage_high(void)
+{
+    return northd_high_cpu;
+}
+
 /* Logs, if appropriate, that the poll loop was awakened by an event
  * registered at 'where' (typically a source file and line number).  The other
  * arguments have two possible interpretations:
@@ -251,6 +279,11 @@ log_wakeup(const char *where, const struct pollfd *pollfd, int timeout)
     struct ds s;
 
     cpu_usage = get_cpu_usage();
+
+    if (thread_is_northd()) {
+        update_northd_cpu_usage(cpu_usage);
+    }
+
     if (VLOG_IS_DBG_ENABLED()) {
         level = VLL_DBG;
     } else if (cpu_usage > 50

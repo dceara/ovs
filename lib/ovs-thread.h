@@ -529,5 +529,6 @@ bool may_fork(void);
 
 int count_cpu_cores(void);
 bool thread_is_pmd(void);
+bool thread_is_northd(void);
 
 #endif /* ovs-thread.h */

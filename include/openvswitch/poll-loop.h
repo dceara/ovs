@@ -41,6 +41,8 @@
 #include <windows.h>
 #endif
 
+#include <stdbool.h>
+
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -75,6 +77,8 @@ void poll_immediate_wake_at(const char *where);
 
 /* Wait until an event occurs. */
 void poll_block(void);
+
+bool northd_is_cpu_usage_high(void);
 
 #ifdef  __cplusplus
 }
