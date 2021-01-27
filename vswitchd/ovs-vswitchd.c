@@ -115,6 +115,7 @@ main(int argc, char *argv[])
     exiting = false;
     cleanup = false;
     while (!exiting) {
+        xmalloc(42);
         memory_run();
         if (memory_should_report()) {
             struct simap usage;

@@ -245,7 +245,7 @@ if [ "$TESTSUITE" ]; then
 
     export DISTCHECK_CONFIGURE_FLAGS="$OPTS"
     if ! make distcheck CFLAGS="${CFLAGS_FOR_OVS}" \
-         TESTSUITEFLAGS=-j4 RECHECK=yes; then
+         TESTSUITEFLAGS="820" RECHECK=yes; then
         # testsuite.log is necessary for debugging.
         cat */_build/sub/tests/testsuite.log
         exit 1
