@@ -1591,6 +1591,11 @@ check_support(struct dpif_backer *backer)
     backer->rt_support.lb_output_action=
         dpif_supports_lb_output_action(backer->dpif);
 
+    /* XXX: hardcoded for testing. */
+    VLOG_INFO("%s: Datapath supports ct_all_zero_nat action",
+              dpif_name(backer->dpif));
+    backer->rt_support.ct_all_zero_nat = true;
+
     /* Flow fields. */
     backer->rt_support.odp.ct_state = check_ct_state(backer);
     backer->rt_support.odp.ct_zone = check_ct_zone(backer);
@@ -5605,6 +5610,7 @@ get_datapath_cap(const char *datapath_type, struct smap *cap)
     smap_add(cap, "explicit_drop_action",
              s.explicit_drop_action ? "true" :"false");
     smap_add(cap, "lb_output_action", s.lb_output_action ? "true" : "false");
+    smap_add(cap, "ct_all_zero_nat", s.ct_all_zero_nat ? "true": "false");
 }
 
 /* Gets timeout policy name in 'backer' based on 'zone', 'dl_type' and
