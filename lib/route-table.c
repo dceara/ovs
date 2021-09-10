@@ -356,7 +356,7 @@ name_table_change(const struct rtnetlink_change *change,
 
     /* Changes to interface status can cause routing table changes that some
      * versions of the linux kernel do not advertise for some reason. */
-    route_table_valid = false;
+    // route_table_valid = false;
 
     if (change && change->nlmsg_type == RTM_DELLINK) {
         if (change->ifname) {
