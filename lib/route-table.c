@@ -80,7 +80,7 @@ static struct nln_notifier *name_notifier = NULL;
 static bool route_table_valid = false;
 
 static int route_table_reset(void);
-static void route_table_handle_msg(const struct route_table_msg *);
+static bool route_table_handle_msg(const struct route_table_msg *);
 static int route_table_parse(struct ofpbuf *, struct route_table_msg *);
 static void route_table_change(const struct route_table_msg *, void *);
 static void route_map_clear(void);
@@ -296,21 +296,29 @@ route_table_parse(struct ofpbuf *buf, struct route_table_msg *change)
 }
 
 static void
-route_table_change(const struct route_table_msg *change OVS_UNUSED,
-                   void *aux OVS_UNUSED)
+route_table_change(const struct route_table_msg *change, void *aux OVS_UNUSED)
 {
-    route_table_valid = false;
+    if (!route_table_handle_msg(change)) {
+        route_table_valid = false;
+    }
 }
 
-static void
+static bool
 route_table_handle_msg(const struct route_table_msg *change)
 {
-    if (change->relevant && change->nlmsg_type == RTM_NEWROUTE) {
+    if (!change->relevant) {
+        return true;
+    }
+
+    if (change->nlmsg_type == RTM_NEWROUTE) {
         const struct route_data *rd = &change->rd;
 
         ovs_router_insert(rd->mark, &rd->rta_dst, rd->rtm_dst_len,
                           rd->local, rd->ifname, &rd->rta_gw);
+        return true;
     }
+
+    return false;
 }
 
 static void
