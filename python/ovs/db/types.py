@@ -45,6 +45,11 @@ class AtomicType(object):
     def __str__(self):
         return self.name
 
+    def to_string2(self):
+        if self == StringType:
+            return 's'
+        return self.name
+
     def to_string(self):
         return self.name
 
@@ -389,7 +394,7 @@ class BaseType(object):
                 return "%(dst)s = *%(src)s;" % args
             return ("%(dst)s = %(src)s->header_.uuid;") % args
         elif self.type == StringType:
-            return "%(dst)s = CONST_CAST(char *, %(src)s);" % args
+            return "%(dst)s = ovsdb_atom_string_create(%(src)s);" % args
         else:
             return "%(dst)s = %(src)s;" % args
 
