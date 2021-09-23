@@ -45,7 +45,7 @@ class AtomicType(object):
     def __str__(self):
         return self.name
 
-    def to_string2(self):
+    def to_lvalue_string(self):
         if self == StringType:
             return 's'
         return self.name
@@ -53,7 +53,7 @@ class AtomicType(object):
     def to_string(self):
         return self.name
 
-    def to_Cvalue_string(self):
+    def to_rvalue_string(self):
         if self == StringType:
             return 's->' + self.name
         return self.name
@@ -377,17 +377,6 @@ class BaseType(object):
         return "OVSDB_TYPE_%s" % self.type.to_string().upper()
 
     def copyCValue(self, dst, src, refTable=True):
-        args = {'dst': dst, 'src': src}
-        if self.ref_table_name:
-            if not refTable:
-                return "%(dst)s = *%(src)s;" % args
-            return ("%(dst)s = %(src)s->header_.uuid;") % args
-        elif self.type == StringType:
-            return "%(dst)s = ovsdb_atom_string_create(%(src)s);" % args
-        else:
-            return "%(dst)s = %(src)s;" % args
-
-    def assign_c_value_casting_away_const(self, dst, src, refTable=True):
         args = {'dst': dst, 'src': src}
         if self.ref_table_name:
             if not refTable:
