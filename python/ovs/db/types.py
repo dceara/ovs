@@ -48,6 +48,11 @@ class AtomicType(object):
     def to_string(self):
         return self.name
 
+    def to_Cvalue_string(self):
+        if self == StringType:
+            return 's->' + self.name
+        return self.name
+
     def to_json(self):
         return self.name
 
@@ -373,7 +378,7 @@ class BaseType(object):
                 return "%(dst)s = *%(src)s;" % args
             return ("%(dst)s = %(src)s->header_.uuid;") % args
         elif self.type == StringType:
-            return "%(dst)s = xstrdup(%(src)s);" % args
+            return "%(dst)s = ovsdb_atom_string_create(%(src)s);" % args
         else:
             return "%(dst)s = %(src)s;" % args
 
