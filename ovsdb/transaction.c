@@ -461,7 +461,11 @@ ovsdb_txn_row_log(const struct ovsdb_txn_row *txn_row)
     static struct vlog_rate_limit rl_update = VLOG_RATE_LIMIT_INIT(30, 60);
     static struct vlog_rate_limit rl_delete = VLOG_RATE_LIMIT_INIT(30, 60);
 
-    if (!txn_row->table->log) {
+    bool always_log =
+        !strcmp(txn_row->table->schema->name, "Logical_Switch_Port")
+        || !strcmp(txn_row->table->schema->name, "Port_Binding");
+
+    if (!txn_row->table->log && !always_log) {
         return;
     }
 
@@ -470,18 +474,21 @@ ovsdb_txn_row_log(const struct ovsdb_txn_row *txn_row)
     const char *op = NULL;
 
     if (!txn_row->old && txn_row->new) {
-        if (!vlog_should_drop(&this_module, VLL_INFO, &rl_insert)) {
+        if (always_log
+            || !vlog_should_drop(&this_module, VLL_INFO, &rl_insert)) {
             log_row = txn_row->new;
             op = "inserted";
         }
     } else if (txn_row->old && txn_row->new
                && !bitmap_is_all_zeros(txn_row->changed, n_columns)) {
-        if (!vlog_should_drop(&this_module, VLL_INFO, &rl_update)) {
+        if (always_log
+            || !vlog_should_drop(&this_module, VLL_INFO, &rl_update)) {
             log_row = txn_row->new;
             op = "updated";
         }
     } else if (txn_row->old && !txn_row->new) {
-        if (!vlog_should_drop(&this_module, VLL_INFO, &rl_delete)) {
+        if (always_log
+            || !vlog_should_drop(&this_module, VLL_INFO, &rl_delete)) {
             log_row = txn_row->old;
             op = "deleted";
         }
