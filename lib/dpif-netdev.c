@@ -2388,8 +2388,8 @@ dp_netdev_pmd_lookup_dpcls(struct dp_netdev_pmd_thread *pmd,
                            odp_port_t in_port)
 {
     struct dpcls *cls;
-    uint32_t hash = hash_port_no(in_port);
-    CMAP_FOR_EACH_WITH_HASH (cls, node, hash, &pmd->classifiers) {
+    // uint32_t hash = hash_port_no(in_port);
+    CMAP_FOR_EACH_WITH_HASH (cls, node, hash_port_no(in_port), &pmd->classifiers) {
         if (cls->in_port == in_port) {
             /* Port classifier exists already */
             return cls;
@@ -2501,12 +2501,12 @@ megaflow_to_mark_disassociate(const ovs_u128 *mega_ufid)
 static inline uint32_t
 megaflow_to_mark_find(const ovs_u128 *mega_ufid)
 {
-    size_t hash = dp_netdev_flow_hash(mega_ufid);
+    // size_t hash = dp_netdev_flow_hash(mega_ufid);
     struct megaflow_to_mark_data *data;
-    unsigned int tid = netdev_offload_thread_id();
+    // unsigned int tid = netdev_offload_thread_id();
 
-    CMAP_FOR_EACH_WITH_HASH (data, node, hash,
-                             &dp_offload_threads[tid].megaflow_to_mark) {
+    CMAP_FOR_EACH_WITH_HASH (data, node, dp_netdev_flow_hash(mega_ufid),
+                             &dp_offload_threads[netdev_offload_thread_id()].megaflow_to_mark) {
         if (ovs_u128_equals(*mega_ufid, data->mega_ufid)) {
             return data->mark;
         }
