@@ -7772,6 +7772,27 @@ log_bad_action(const struct ofp_action_header *actions, size_t actions_len,
     }
 }
 
+/* Action header. */
+struct ofp_action_header {
+    /* The meaning of other values of 'type' generally depends on the OpenFlow
+     * version (see enum ofp_raw_action_type).
+     *
+     * Across all OpenFlow versions, OFPAT_VENDOR indicates that 'vendor'
+     * designates an OpenFlow vendor ID and that the remainder of the action
+     * structure has a vendor-defined meaning.
+     */
+#define OFPAT_VENDOR 0xffff
+    ovs_be16 type;
+
+    /* Always a multiple of 8. */
+    ovs_be16 len;
+
+    /* For type == OFPAT_VENDOR only, this is a vendor ID, e.g. NX_VENDOR_ID or
+     * ONF_VENDOR_ID.  Other 'type's use this space for some other purpose. */
+    ovs_be32 vendor;
+};
+OFP_ASSERT(sizeof(struct ofp_action_header) == 8);
+
 static enum ofperr
 ofpacts_decode_aligned(struct ofpbuf *openflow, enum ofp_version ofp_version,
                        const struct vl_mff_map *vl_mff_map,
@@ -7807,7 +7828,7 @@ ofpacts_decode_aligned(struct ofpbuf *openflow, enum ofp_version ofp_version,
             *bad_action_offset = decoded_len;
             goto done;
         }
-        decoded_len += openflow->size;
+        decoded_len += ntohs(action->len);
     }
 
 done:
@@ -9555,26 +9576,26 @@ struct ofpact_raw_instance {
     const char *deprecation;
 };
 
-/* Action header. */
-struct ofp_action_header {
-    /* The meaning of other values of 'type' generally depends on the OpenFlow
-     * version (see enum ofp_raw_action_type).
-     *
-     * Across all OpenFlow versions, OFPAT_VENDOR indicates that 'vendor'
-     * designates an OpenFlow vendor ID and that the remainder of the action
-     * structure has a vendor-defined meaning.
-     */
-#define OFPAT_VENDOR 0xffff
-    ovs_be16 type;
+// /* Action header. */
+// struct ofp_action_header {
+//     /* The meaning of other values of 'type' generally depends on the OpenFlow
+//      * version (see enum ofp_raw_action_type).
+//      *
+//      * Across all OpenFlow versions, OFPAT_VENDOR indicates that 'vendor'
+//      * designates an OpenFlow vendor ID and that the remainder of the action
+//      * structure has a vendor-defined meaning.
+//      */
+// #define OFPAT_VENDOR 0xffff
+//     ovs_be16 type;
 
-    /* Always a multiple of 8. */
-    ovs_be16 len;
+//     /* Always a multiple of 8. */
+//     ovs_be16 len;
 
-    /* For type == OFPAT_VENDOR only, this is a vendor ID, e.g. NX_VENDOR_ID or
-     * ONF_VENDOR_ID.  Other 'type's use this space for some other purpose. */
-    ovs_be32 vendor;
-};
-OFP_ASSERT(sizeof(struct ofp_action_header) == 8);
+//     /* For type == OFPAT_VENDOR only, this is a vendor ID, e.g. NX_VENDOR_ID or
+//      * ONF_VENDOR_ID.  Other 'type's use this space for some other purpose. */
+//     ovs_be32 vendor;
+// };
+// OFP_ASSERT(sizeof(struct ofp_action_header) == 8);
 
 static bool
 ofpact_hdrs_equal(const struct ofpact_hdrs *a,
