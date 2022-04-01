@@ -512,10 +512,10 @@ schedule_next_snapshot(struct ovsdb_storage *storage, bool quick)
 
             storage->next_snapshot_max = now + one_day;
         }
-    } else {
-        storage->next_snapshot_min = LLONG_MAX;
-        storage->next_snapshot_max = LLONG_MAX;
     }
+
+    storage->next_snapshot_min = LLONG_MAX;
+    storage->next_snapshot_max = LLONG_MAX;
 }
 
 bool
