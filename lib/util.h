@@ -22,6 +22,7 @@
 #include <arpa/inet.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -217,6 +218,17 @@ nullable_memset(void *dst, int c, size_t n)
 #define ovs_strlcpy_arrays(DST, SRC) \
     ovs_strlcpy(DST, SRC, MIN(ARRAY_SIZE(DST), ARRAY_SIZE(SRC)))
 
+OVS_NO_RETURN void ovs_abort(int err_no, const char *format, ...)
+    OVS_PRINTF_FORMAT(2, 3);
+OVS_NO_RETURN void ovs_abort_valist(int err_no, const char *format, va_list)
+    OVS_PRINTF_FORMAT(2, 0);
+OVS_NO_RETURN void ovs_fatal(int err_no, const char *format, ...)
+    OVS_PRINTF_FORMAT(2, 3);
+OVS_NO_RETURN void ovs_fatal_valist(int err_no, const char *format, va_list)
+    OVS_PRINTF_FORMAT(2, 0);
+void ovs_error(int err_no, const char *format, ...) OVS_PRINTF_FORMAT(2, 3);
+void ovs_error_valist(int err_no, const char *format, va_list)
+    OVS_PRINTF_FORMAT(2, 0);
 const char *ovs_retval_to_string(int);
 const char *ovs_strerror(int);
 void ovs_hex_dump(FILE *, const void *, size_t, uintptr_t offset, bool ascii);
