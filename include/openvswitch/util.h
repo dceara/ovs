@@ -17,6 +17,8 @@
 #ifndef OPENVSWITCH_UTIL_H
 #define OPENVSWITCH_UTIL_H 1
 
+#include <stdarg.h>
+
 #include <openvswitch/compiler.h>
 #include <openvswitch/version.h>
 #include <openvswitch/types.h>
@@ -58,6 +60,17 @@ const char *ovs_get_program_version(void);
 #define ovs_assert(CONDITION) ((void) (CONDITION))
 #endif
 OVS_NO_RETURN void ovs_assert_failure(const char *, const char *, const char *);
+OVS_NO_RETURN void ovs_abort(int err_no, const char *format, ...)
+    OVS_PRINTF_FORMAT(2, 3);
+OVS_NO_RETURN void ovs_abort_valist(int err_no, const char *format, va_list)
+    OVS_PRINTF_FORMAT(2, 0);
+OVS_NO_RETURN void ovs_fatal(int err_no, const char *format, ...)
+    OVS_PRINTF_FORMAT(2, 3);
+OVS_NO_RETURN void ovs_fatal_valist(int err_no, const char *format, va_list)
+    OVS_PRINTF_FORMAT(2, 0);
+void ovs_error(int err_no, const char *format, ...) OVS_PRINTF_FORMAT(2, 3);
+void ovs_error_valist(int err_no, const char *format, va_list)
+    OVS_PRINTF_FORMAT(2, 0);
 
 /* This is a void expression that issues a compiler error if POINTER cannot be
  * compared for equality with the given pointer TYPE.  This generally means

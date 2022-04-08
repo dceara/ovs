@@ -179,9 +179,13 @@ static inline void ofpbuf_delete(struct ofpbuf *b)
 static inline void *ofpbuf_at(const struct ofpbuf *b, size_t offset,
                               size_t size)
 {
-    return (offset + size <= b->size) && b->data
-           ? (char *) b->data + offset
-           : NULL;
+    if (offset + size <= b->size) {
+        if (!b->data) {
+            ovs_abort(0, "invalid buffer data pointer");
+        }
+        return (char *) b->data + offset;
+    }
+    return NULL;
 }
 
 /* Returns a pointer to byte 'offset' in 'b', which must contain at least
@@ -190,12 +194,18 @@ static inline void *ofpbuf_at_assert(const struct ofpbuf *b, size_t offset,
                                      size_t size)
 {
     ovs_assert(offset + size <= b->size);
-    return b->data ? (char *) b->data + offset : NULL;
+    if (!b->data) {
+        ovs_abort(0, "invalid buffer data pointer");
+    }
+    return (char *) b->data + offset;
 }
 
 /* Returns a pointer to byte following the last byte of data in use in 'b'. */
 static inline void *ofpbuf_tail(const struct ofpbuf *b)
 {
+    if (!b->data && b->size) {
+        ovs_abort(0, "invalid buffer null data pointer and non-zero size");
+    }
     return b->data ? (char *) b->data + b->size : NULL;
 }
 
@@ -203,6 +213,9 @@ static inline void *ofpbuf_tail(const struct ofpbuf *b)
  * not necessarily in use) in 'b'. */
 static inline void *ofpbuf_end(const struct ofpbuf *b)
 {
+    if (!b->base && b->allocated) {
+        ovs_abort(0, "invalid buffer null base pointer and non-zero allocated");
+    }
     return b->base ? (char *) b->base + b->allocated : NULL;
 }
 
