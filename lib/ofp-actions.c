@@ -3202,7 +3202,12 @@ set_field_split_str(char *arg, char **key, char **value, char **delim)
 {
     char *value_end;
 
+    *key = NULL;
     *value = arg;
+    if (delim) {
+        *delim = NULL;
+    }
+
     value_end = strstr(arg, "->");
     if (!value_end) {
         return xasprintf("%s: missing `->'", arg);
