@@ -140,7 +140,7 @@ class ConditionState(object):
         return False
 
 
-class IdlTable:
+class IdlTable(object):
     def __init__(self, idl, table):
         assert(isinstance(table, ovs.db.schema.TableSchema))
         self._table = table
@@ -172,7 +172,7 @@ class IdlTable:
         return {k: cls(idl, v) for k, v in schema.tables.items()}
 
 
-class IdlColumn:
+class IdlColumn(object):
     def __init__(self, column):
         self._column = column
         self.alert = True
