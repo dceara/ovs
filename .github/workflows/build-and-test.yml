@@ -54,7 +54,7 @@ jobs:
       if: steps.dpdk_cache.outputs.cache-hit != 'true'
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: update APT cache
       if: steps.dpdk_cache.outputs.cache-hit != 'true'
@@ -217,7 +217,7 @@ jobs:
     - name: set up python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: cache
       if:   matrix.dpdk != '' || matrix.dpdk_shared != ''
@@ -354,7 +354,7 @@ jobs:
     - name: set up python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: get cached dpdk-dir
       uses: actions/cache/restore@v4
@@ -407,7 +407,7 @@ jobs:
     - name: set up python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.12'
     - name: install dependencies
       run:  brew install automake libtool
     - name: prepare
