@@ -1085,7 +1085,22 @@ enum OVS_PACKED_ENUM mf_field_id {
      * Prerequisites: none.
      * Access: read/write.
      * NXM: none.
-     * OXM: OXM_OF_PKT_REG<N>(<N>) since OF1.3 and v2.4.
+     * OXM: OXM_OF_PKT_REG0(0) since OF1.3 and v2.4.      <0>
+     * OXM: OXM_OF_PKT_REG1(1) since OF1.3 and v2.4.      <1>
+     * OXM: OXM_OF_PKT_REG2(2) since OF1.3 and v2.4.      <2>
+     * OXM: OXM_OF_PKT_REG3(3) since OF1.3 and v2.4.      <3>
+     * OXM: OXM_OF_PKT_REG4(4) since OF1.3 and v2.4.      <4>
+     * OXM: OXM_OF_PKT_REG5(5) since OF1.3 and v2.4.      <5>
+     * OXM: OXM_OF_PKT_REG6(6) since OF1.3 and v2.4.      <6>
+     * OXM: OXM_OF_PKT_REG7(7) since OF1.3 and v2.4.      <7>
+     * OXM: OXM_OF_PKT_REG8(8) since OF1.3 and v3.7.      <8>
+     * OXM: OXM_OF_PKT_REG9(9) since OF1.3 and v3.7.      <9>
+     * OXM: OXM_OF_PKT_REG10(10) since OF1.3 and v3.7.    <10>
+     * OXM: OXM_OF_PKT_REG11(11) since OF1.3 and v3.7.    <11>
+     * OXM: OXM_OF_PKT_REG12(12) since OF1.3 and v3.7.    <12>
+     * OXM: OXM_OF_PKT_REG13(13) since OF1.3 and v3.7.    <13>
+     * OXM: OXM_OF_PKT_REG14(14) since OF1.3 and v3.7.    <14>
+     * OXM: OXM_OF_PKT_REG15(15) since OF1.3 and v3.7.    <15>
      */
     MFF_XREG0,
     MFF_XREG1,
