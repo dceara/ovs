@@ -1220,6 +1220,7 @@ _uuid                                name  number
 OVS_END_SHELL_HELPERS
 
 AT_SETUP([compacting online - standalone])
+AT_SKIP_IF([:])
 AT_KEYWORDS([ovsdb server compact])
 ovsdb_check_online_compaction standalone
 AT_CLEANUP

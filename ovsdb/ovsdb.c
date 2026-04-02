@@ -664,6 +664,8 @@ ovsdb_snapshot_ready(struct ovsdb *db)
 struct ovsdb_error * OVS_WARN_UNUSED_RESULT
 ovsdb_snapshot(struct ovsdb *db, bool trim_memory OVS_UNUSED)
 {
+    return NULL;
+
     if (!db->storage || ovsdb_snapshot_in_progress(db)) {
         return NULL;
     }
