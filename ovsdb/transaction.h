@@ -42,7 +42,7 @@ struct ovsdb_txn_progress *ovsdb_txn_propose_commit(struct ovsdb_txn *,
 struct ovsdb_error *ovsdb_txn_propose_commit_block(struct ovsdb_txn *,
                                                    bool durable)
     OVS_WARN_UNUSED_RESULT;
-void ovsdb_txn_complete(struct ovsdb_txn *);
+void ovsdb_txn_complete(struct ovsdb_txn *, bool force_log);
 
 struct ovsdb_txn_progress *ovsdb_txn_propose_schema_change(
     struct ovsdb *, const struct ovsdb_schema *,

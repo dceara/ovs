@@ -107,11 +107,13 @@ struct ovsdb_txn_row {
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
 delete_garbage_row(struct ovsdb_txn *txn, struct ovsdb_txn_row *r);
 static void ovsdb_txn_row_prefree(struct ovsdb_txn_row *);
-static void ovsdb_txn_row_log(const struct ovsdb_txn_row *);
+static void ovsdb_txn_row_log(const struct ovsdb_txn_row *, bool force_log);
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
 for_each_txn_row(struct ovsdb_txn *txn,
                       struct ovsdb_error *(*)(struct ovsdb_txn *,
-                                              struct ovsdb_txn_row *));
+                                              struct ovsdb_txn_row *,
+                                              bool),
+                 bool force_log);
 
 /* Used by for_each_txn_row() to track tables and rows that have been
  * processed.  */
@@ -154,7 +156,8 @@ ovsdb_txn_free(struct ovsdb_txn *txn)
 
 static struct ovsdb_error *
 ovsdb_txn_row_abort(struct ovsdb_txn *txn OVS_UNUSED,
-                    struct ovsdb_txn_row *txn_row)
+                    struct ovsdb_txn_row *txn_row,
+                    bool force_log OVS_UNUSED)
 {
     struct ovsdb_row *old = txn_row->old;
     struct ovsdb_row *new = txn_row->new;
@@ -197,7 +200,7 @@ ovsdb_txn_row_abort(struct ovsdb_txn *txn OVS_UNUSED,
 void
 ovsdb_txn_abort(struct ovsdb_txn *txn)
 {
-    ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_row_abort));
+    ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_row_abort, false));
     ovsdb_txn_free(txn);
 }
 
@@ -294,7 +297,7 @@ ovsdb_txn_adjust_row_refs(struct ovsdb_txn *txn, const struct ovsdb_row *r,
 }
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
-update_row_ref_count(struct ovsdb_txn *txn, struct ovsdb_txn_row *r)
+update_row_ref_count(struct ovsdb_txn *txn, struct ovsdb_txn_row *r, bool force_log OVS_UNUSED)
 {
     struct ovsdb_table *table = r->table;
     struct shash_node *node;
@@ -350,7 +353,7 @@ update_row_ref_count(struct ovsdb_txn *txn, struct ovsdb_txn_row *r)
 }
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
-check_ref_count(struct ovsdb_txn *txn OVS_UNUSED, struct ovsdb_txn_row *r)
+check_ref_count(struct ovsdb_txn *txn OVS_UNUSED, struct ovsdb_txn_row *r, bool force_log OVS_UNUSED)
 {
     if (r->new || !r->n_refs) {
         return NULL;
@@ -444,7 +447,7 @@ delete_garbage_row(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
 }
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
-collect_garbage(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+collect_garbage(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row, bool force_log OVS_UNUSED)
 {
     if (txn_row->new && !txn_row->n_refs) {
         return delete_garbage_row(txn, txn_row);
@@ -457,20 +460,18 @@ update_ref_counts(struct ovsdb_txn *txn)
 {
     struct ovsdb_error *error;
 
-    error = for_each_txn_row(txn, update_row_ref_count);
+    error = for_each_txn_row(txn, update_row_ref_count, false);
     if (error) {
         return error;
     }
 
-    return for_each_txn_row(txn, check_ref_count);
+    return for_each_txn_row(txn, check_ref_count, false);
 }
 
 static void
-ovsdb_txn_row_log(const struct ovsdb_txn_row *txn_row)
+ovsdb_txn_row_log(const struct ovsdb_txn_row *txn_row, bool force_log)
 {
-    static struct vlog_rate_limit rl_row_log = VLOG_RATE_LIMIT_INIT(30, 60);
-
-    if (!txn_row->table->log) {
+    if (!force_log && !txn_row->table->log) {
         return;
     }
 
@@ -490,7 +491,7 @@ ovsdb_txn_row_log(const struct ovsdb_txn_row *txn_row)
         op = "deleted";
     }
 
-    if (op && !VLOG_DROP_INFO(&rl_row_log)) {
+    if (op) {
         struct ds *ds = row_log_str_get();
         ds_clear(ds);
         ds_put_format(ds, "table:%s,op:%s,", txn_row->table->schema->name,
@@ -502,7 +503,8 @@ ovsdb_txn_row_log(const struct ovsdb_txn_row *txn_row)
 
 static struct ovsdb_error *
 ovsdb_txn_row_commit(struct ovsdb_txn *txn OVS_UNUSED,
-                     struct ovsdb_txn_row *txn_row)
+                     struct ovsdb_txn_row *txn_row,
+                     bool log)
 {
     size_t n_indexes = txn_row->table->schema->n_indexes;
 
@@ -523,7 +525,7 @@ ovsdb_txn_row_commit(struct ovsdb_txn *txn OVS_UNUSED,
         }
     }
 
-    ovsdb_txn_row_log(txn_row);
+    ovsdb_txn_row_log(txn_row, log);
     ovsdb_txn_row_prefree(txn_row);
     if (txn_row->new) {
         txn_row->new->n_refs = txn_row->n_refs;
@@ -537,7 +539,8 @@ ovsdb_txn_row_commit(struct ovsdb_txn *txn OVS_UNUSED,
 
 static struct ovsdb_error *
 ovsdb_txn_update_weak_refs(struct ovsdb_txn *txn OVS_UNUSED,
-                           struct ovsdb_txn_row *txn_row)
+                           struct ovsdb_txn_row *txn_row,
+                           bool force_log OVS_UNUSED)
 {
     struct ovsdb_weak_ref *weak, *dst_weak;
     struct ovsdb_row *dst_row;
@@ -654,7 +657,7 @@ find_and_add_weak_refs(const struct ovsdb_row *src,
 }
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
-assess_weak_refs(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+assess_weak_refs(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row, bool force_log OVS_UNUSED)
 {
     struct ovsdb_weak_ref *weak;
     struct ovsdb_table *table = txn_row->table;
@@ -808,7 +811,7 @@ assess_weak_refs(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
 }
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
-determine_changes(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+determine_changes(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row, bool force_log OVS_UNUSED)
 {
     struct ovsdb_table *table = txn_row->table;
 
@@ -831,7 +834,7 @@ determine_changes(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
 
         if (!changed) {
             /* Nothing actually changed in this row, so drop it. */
-            ovsdb_txn_row_abort(txn, txn_row);
+            ovsdb_txn_row_abort(txn, txn_row, false);
         }
     } else {
         bitmap_set_multiple(txn_row->changed, 0,
@@ -951,7 +954,8 @@ duplicate_index_row(const struct ovsdb_column_set *index,
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
 check_index_uniqueness(struct ovsdb_txn *txn OVS_UNUSED,
-                       struct ovsdb_txn_row *txn_row)
+                       struct ovsdb_txn_row *txn_row,
+                       bool force_log OVS_UNUSED)
 {
     /* Skip rows that are being deleted since they can't violate uniqueness. */
     struct ovsdb_row *row = txn_row->new;
@@ -995,7 +999,7 @@ check_index_uniqueness(struct ovsdb_txn *txn OVS_UNUSED,
 }
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
-count_atoms(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+count_atoms(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row, bool force_log OVS_UNUSED)
 {
     struct ovsdb_table *table = txn_row->table;
     size_t n_columns = shash_count(&table->schema->columns);
@@ -1034,7 +1038,7 @@ count_atoms(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
 }
 
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
-update_version(struct ovsdb_txn *txn OVS_UNUSED, struct ovsdb_txn_row *txn_row)
+update_version(struct ovsdb_txn *txn OVS_UNUSED, struct ovsdb_txn_row *txn_row, bool force_log OVS_UNUSED)
 {
     struct ovsdb_table *table = txn_row->table;
     size_t n_columns = shash_count(&table->schema->columns);
@@ -1061,7 +1065,7 @@ ovsdb_txn_precommit(struct ovsdb_txn *txn)
 
     /* Figure out what actually changed, and abort early if the transaction
      * was really a no-op. */
-    error = for_each_txn_row(txn, determine_changes);
+    error = for_each_txn_row(txn, determine_changes, false);
     if (error) {
         return OVSDB_WRAP_BUG("can't happen", error);
     }
@@ -1076,7 +1080,7 @@ ovsdb_txn_precommit(struct ovsdb_txn *txn)
     }
 
     /* Delete unreferenced, non-root rows. */
-    error = for_each_txn_row(txn, collect_garbage);
+    error = for_each_txn_row(txn, collect_garbage, false);
     if (error) {
         return OVSDB_WRAP_BUG("can't happen", error);
     }
@@ -1089,25 +1093,25 @@ ovsdb_txn_precommit(struct ovsdb_txn *txn)
 
     /* Check reference counts and remove bad references for "weak" referential
      * integrity. */
-    error = for_each_txn_row(txn, assess_weak_refs);
+    error = for_each_txn_row(txn, assess_weak_refs, false);
     if (error) {
         return error;
     }
 
     /* Verify that the indexes will still be unique post-transaction. */
-    error = for_each_txn_row(txn, check_index_uniqueness);
+    error = for_each_txn_row(txn, check_index_uniqueness, false);
     if (error) {
         return error;
     }
 
     /* Count atoms. */
-    error = for_each_txn_row(txn, count_atoms);
+    error = for_each_txn_row(txn, count_atoms, false);
     if (error) {
         return OVSDB_WRAP_BUG("can't happen", error);
     }
 
     /* Update _version for rows that changed.  */
-    error = for_each_txn_row(txn, update_version);
+    error = for_each_txn_row(txn, update_version, false);
     if (error) {
         return OVSDB_WRAP_BUG("can't happen", error);
     }
@@ -1196,15 +1200,15 @@ ovsdb_txn_add_to_history(struct ovsdb_txn *txn)
 
 /* Finalize commit. */
 void
-ovsdb_txn_complete(struct ovsdb_txn *txn)
+ovsdb_txn_complete(struct ovsdb_txn *txn, bool force_log)
 {
     if (!ovsdb_txn_is_empty(txn)) {
 
         txn->db->run_triggers_now = txn->db->run_triggers = true;
         txn->db->n_atoms += txn->n_atoms_diff;
         ovsdb_monitors_commit(txn->db, txn);
-        ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_update_weak_refs));
-        ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_row_commit));
+        ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_update_weak_refs, false));
+        ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_row_commit, force_log));
     }
     ovsdb_txn_free(txn);
 }
@@ -1223,7 +1227,7 @@ ovsdb_txn_replay_commit(struct ovsdb_txn *txn)
         ovsdb_txn_abort(txn);
     } else {
         ovsdb_txn_add_to_history(txn);
-        ovsdb_txn_complete(txn);
+        ovsdb_txn_complete(txn, false);
     }
     return error;
 }
@@ -1322,7 +1326,7 @@ ovsdb_txn_propose_commit_block(struct ovsdb_txn *txn, bool durable)
             if (error) {
                 ovsdb_txn_abort(txn);
             } else {
-                ovsdb_txn_complete(txn);
+                ovsdb_txn_complete(txn, false);
             }
 
             return error;
@@ -1628,7 +1632,9 @@ ovsdb_txn_table_destroy(struct ovsdb_txn_table *txn_table)
 static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
 for_each_txn_row(struct ovsdb_txn *txn,
                  struct ovsdb_error *(*cb)(struct ovsdb_txn *,
-                                           struct ovsdb_txn_row *))
+                                           struct ovsdb_txn_row *,
+                                           bool),
+                 bool force_log)
 {
     bool any_work;
 
@@ -1655,7 +1661,7 @@ for_each_txn_row(struct ovsdb_txn *txn,
                         t->n_processed++;
                         any_work = true;
 
-                        error = cb(txn, r);
+                        error = cb(txn, r, force_log);
                         if (error) {
                             return error;
                         }

@@ -346,7 +346,7 @@ ovsdb_trigger_try(struct ovsdb_trigger *t, long long int now)
         if (ovsdb_txn_progress_is_complete(t->progress)
             && !ovsdb_txn_progress_get_error(t->progress)) {
             if (txn) {
-                ovsdb_txn_complete(txn);
+                ovsdb_txn_complete(txn, t->db && !strcmp(t->db->name, "OVN_Northbound"));
             }
             ovsdb_txn_progress_destroy(t->progress);
             t->progress = NULL;
