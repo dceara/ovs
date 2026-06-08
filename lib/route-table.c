@@ -32,6 +32,7 @@
 #include "netlink.h"
 #include "netlink-notifier.h"
 #include "netlink-socket.h"
+#include "netnsid.h"
 #include "openvswitch/list.h"
 #include "openvswitch/ofpbuf.h"
 #include "ovs-router.h"
@@ -80,6 +81,12 @@ static void route_map_clear(void);
 static void name_table_init(void);
 static void name_table_change(const struct rtnetlink_change *, void *);
 
+static int
+route_table_parse2(struct ofpbuf *buf, int nsid OVS_UNUSED, void *change_)
+{
+    return route_table_parse(buf, change_);
+}
+
 static void
 route_data_destroy_nexthops__(struct route_data *rd)
 {
@@ -116,7 +123,8 @@ route_table_init(void)
     ovs_assert(!route6_notifier);
 
     ovs_router_init();
-    nln = nln_create(NETLINK_ROUTE, route_table_parse, &nln_rtmsg_change);
+    nln = nln_create(NETLINK_ROUTE, false, route_table_parse2,
+                     &nln_rtmsg_change);
 
     route_notifier =
         nln_notifier_create(nln, RTNLGRP_IPV4_ROUTE,
@@ -599,10 +607,9 @@ name_table_init(void)
 
 
 static void
-name_table_change(const struct rtnetlink_change *change,
-                  void *aux OVS_UNUSED)
+name_table_change(const struct rtnetlink_change *change, void *aux OVS_UNUSED)
 {
-    if (change && change->irrelevant) {
+    if (change && (change->nsid != NETNSID_LOCAL || change->irrelevant)) {
         return;
     }
 
