@@ -38,6 +38,7 @@
 #include "packets.h"
 #include "rtnetlink.h"
 #include "tnl-ports.h"
+#include "unixctl.h"
 #include "openvswitch/vlog.h"
 
 /* Linux 2.6.36 added RTA_MARK, so define it just in case we're building with
@@ -72,6 +73,11 @@ static struct nln_notifier *name_notifier = NULL;
 
 static bool route_table_valid = false;
 
+/* When set, only process netlink route/link messages for the interface
+ * with this name.  All other interfaces' messages are silently dropped.
+ * Set via the "route-table/filter-iface" appctl command. */
+static char route_table_filter_ifname[IFNAMSIZ + 1];
+
 static void route_table_reset(void);
 static void route_table_handle_msg(const struct route_table_msg *, void *aux);
 static void route_table_change(struct route_table_msg *, void *aux);
@@ -79,6 +85,8 @@ static void route_map_clear(void);
 
 static void name_table_init(void);
 static void name_table_change(const struct rtnetlink_change *, void *);
+static void route_table_filter_iface(struct unixctl_conn *, int argc,
+                                     const char *argv[], void *aux);
 
 static void
 route_data_destroy_nexthops__(struct route_data *rd)
@@ -127,6 +135,9 @@ route_table_init(void)
 
     route_table_reset();
     name_table_init();
+
+    unixctl_command_register("route-table/filter-iface", "IFACE", 1, 1,
+                             route_table_filter_iface, NULL);
 
     ovs_mutex_unlock(&route_table_mutex);
 }
@@ -537,9 +548,56 @@ is_standard_table_id(uint32_t table_id)
            || table_id == RT_TABLE_LOCAL;
 }
 
+/* Returns true if the route message 'change' references only interfaces
+ * that do NOT match the global filter name.  When the filter is not set
+ * (route_table_filter_ifname is empty), no message is ever filtered out. */
+static bool
+route_msg_is_filtered(const struct route_table_msg *change)
+{
+    if (!route_table_filter_ifname[0]) {
+        return false;
+    }
+
+    if (change->nlmsg_type != RTM_NEWROUTE
+        && change->nlmsg_type != RTM_DELROUTE) {
+        return false;
+    }
+
+    if (ovs_list_is_empty(&change->rd.nexthops)) {
+        return true;
+    }
+
+    const struct route_data_nexthop *rdnh;
+    LIST_FOR_EACH (rdnh, nexthop_node, &change->rd.nexthops) {
+        if (!strcmp(rdnh->ifname, route_table_filter_ifname)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void
+route_table_filter_iface(struct unixctl_conn *conn, int argc OVS_UNUSED,
+                          const char *argv[], void *aux OVS_UNUSED)
+{
+    const char *ifname = argv[1];
+
+    ovs_strlcpy(route_table_filter_ifname, ifname,
+                sizeof route_table_filter_ifname);
+
+    char *reply = xasprintf("filtering for %s", ifname);
+    unixctl_command_reply(conn, reply);
+    free(reply);
+}
+
 static void
 route_table_change(struct route_table_msg *change, void *aux OVS_UNUSED)
 {
+    if (change && route_msg_is_filtered(change)) {
+        route_data_destroy(&change->rd);
+        return;
+    }
+
     if (!change
         || (change->relevant
             && is_standard_table_id(change->rd.rta_table_id))) {
@@ -554,6 +612,10 @@ static void
 route_table_handle_msg(const struct route_table_msg *change,
                        void *aux OVS_UNUSED)
 {
+    if (route_msg_is_filtered(change)) {
+        return;
+    }
+
     if (change->relevant && change->nlmsg_type == RTM_NEWROUTE
             && !ovs_list_is_empty(&change->rd.nexthops)) {
         const struct route_data *rd = &change->rd;
@@ -603,6 +665,12 @@ name_table_change(const struct rtnetlink_change *change,
                   void *aux OVS_UNUSED)
 {
     if (change && change->irrelevant) {
+        return;
+    }
+
+    if (change && route_table_filter_ifname[0]
+        && (!change->ifname
+            || strcmp(change->ifname, route_table_filter_ifname))) {
         return;
     }
 
