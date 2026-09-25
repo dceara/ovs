@@ -41,10 +41,16 @@
 #include "simap.h"
 #include "stream.h"
 #include "timeval.h"
+#include "unixctl.h"
 #include "util.h"
 
 VLOG_DEFINE_THIS_MODULE(connmgr);
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 5);
+
+static unsigned int rconn_rcv_limit = 50;
+
+static void connmgr_set_rconn_rcv_limit(struct unixctl_conn *, int argc,
+                                        const char *argv[], void *aux);
 
 /* An OpenFlow connection.
  *
@@ -271,6 +277,25 @@ connmgr_create(struct ofproto *ofproto,
     atomic_init(&mgr->want_packet_in_on_miss, 0);
 
     return mgr;
+}
+
+void connmgr_init(void)
+{
+    unixctl_command_register("connmgr/set-rconn-rcv-limit", "LIMIT", 1, 1,
+                             connmgr_set_rconn_rcv_limit, NULL);
+}
+
+static void
+connmgr_set_rconn_rcv_limit(struct unixctl_conn *conn, int argc OVS_UNUSED,
+                            const char *argv[], void *aux OVS_UNUSED)
+{
+    const char *limit = argv[1];
+
+    str_to_uint(limit, 10, &rconn_rcv_limit);
+
+    char *reply = xasprintf("Setting rconn rcv limit to %u", rconn_rcv_limit);
+    unixctl_command_reply(conn, reply);
+    free(reply);
 }
 
 /* The default "table-miss" behaviour for OpenFlow1.3+ is to drop the
@@ -1309,7 +1334,7 @@ ofconn_run(struct ofconn *ofconn,
     rconn_run(ofconn->rconn);
 
     /* Limit the number of iterations to avoid starving other tasks. */
-    for (int i = 0; i < 50 && ofconn_may_recv(ofconn); i++) {
+    for (int i = 0; i < rconn_rcv_limit && ofconn_may_recv(ofconn); i++) {
         struct ofpbuf *of_msg = rconn_recv(ofconn->rconn);
         if (!of_msg) {
             break;

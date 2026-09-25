@@ -57,6 +57,8 @@ struct connmgr *connmgr_create(struct ofproto *ofproto,
 void connmgr_destroy(struct connmgr *)
     OVS_REQUIRES(ofproto_mutex);
 
+void connmgr_init(void);
+
 void connmgr_run(struct connmgr *,
                  void (*handle_openflow)(struct ofconn *,
                                          const struct ovs_list *msgs));

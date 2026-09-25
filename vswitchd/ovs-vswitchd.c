@@ -53,6 +53,7 @@
 #include "openvswitch/vlog.h"
 #include "lib/vswitch-idl.h"
 #include "lib/dns-resolve.h"
+#include "ofproto/connmgr.h"
 
 VLOG_DEFINE_THIS_MODULE(vswitchd);
 
@@ -122,6 +123,7 @@ main(int argc, char *argv[])
 
     bridge_init(remote);
     free(remote);
+    connmgr_init();
 
     while (!exit_args.exiting) {
         OVS_USDT_PROBE(main, run_start);
