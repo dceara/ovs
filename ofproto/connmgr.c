@@ -1317,6 +1317,8 @@ ofconn_may_recv(const struct ofconn *ofconn)
     return count < OFCONN_REPLY_MAX;
 }
 
+COVERAGE_DEFINE(ofconn_may_not_recv);
+
 static void
 ofconn_run(struct ofconn *ofconn,
            void (*handle_openflow)(struct ofconn *,
@@ -1332,6 +1334,10 @@ ofconn_run(struct ofconn *ofconn,
     }
 
     rconn_run(ofconn->rconn);
+
+    if (!ofconn_may_recv(ofconn)) {
+        COVERAGE_INC(ofconn_may_not_recv);
+    }
 
     /* Limit the number of iterations to avoid starving other tasks. */
     for (int i = 0; i < rconn_rcv_limit && ofconn_may_recv(ofconn); i++) {
