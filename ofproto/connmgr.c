@@ -1339,6 +1339,8 @@ ofconn_run(struct ofconn *ofconn,
         COVERAGE_INC(ofconn_may_not_recv);
     }
 
+    size_t processed = 0;
+
     /* Limit the number of iterations to avoid starving other tasks. */
     for (int i = 0; i < rconn_rcv_limit && ofconn_may_recv(ofconn); i++) {
         struct ofpbuf *of_msg = rconn_recv(ofconn->rconn);
@@ -1360,7 +1362,11 @@ ofconn_run(struct ofconn *ofconn,
             handle_openflow(ofconn, &msgs);
             ofpbuf_list_delete(&msgs);
         }
+
+        processed++;
     }
+
+    VLOG_INFO("DEBUG DCEARA ofconn_run() n_processed %"PRIuSIZE, processed);
 
     long long int now = time_msec();
 
