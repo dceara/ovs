@@ -35,6 +35,8 @@
 #include "vlan-bitmap.h"
 #include "openvswitch/vlog.h"
 
+VLOG_DEFINE_THIS_MODULE(mcast_snooping);
+
 COVERAGE_DEFINE(mcast_snooping_learned);
 COVERAGE_DEFINE(mcast_snooping_expired);
 
@@ -424,9 +426,19 @@ mcast_snooping_add_group(struct mcast_snooping *ms,
     bool learned;
     struct mcast_group *grp;
 
+    if (IN6_IS_ADDR_V4MAPPED(addr)) {
+        ovs_be32 ip = in6_addr_get_mapped_ipv4(addr);
+        VLOG_INFO("DEBUG DCEARA mcast_snooping_add_group("IP_FMT")", IP_ARGS(ip));
+    }
+
     /* Avoid duplicate packets. */
-    if (mcast_snooping_mrouter_lookup(ms, vlan, port)
-        || mcast_snooping_port_lookup(&ms->fport_list, port)) {
+    if (mcast_snooping_mrouter_lookup(ms, vlan, port)) {
+        VLOG_INFO("DEBUG DCEARA mcast_snooping_add_group() failed, mrouter_lookup");
+        return false;
+    }
+
+    if (mcast_snooping_port_lookup(&ms->fport_list, port)) {
+        VLOG_INFO("DEBUG DCEARA mcast_snooping_add_group() failed, port_lookup");
         return false;
     }
 
@@ -437,6 +449,7 @@ mcast_snooping_add_group(struct mcast_snooping *ms,
 
         if (hmap_count(&ms->table) >= ms->max_entries) {
             if (!group_get_lru(ms, &grp)) {
+                VLOG_INFO("DEBUG DCEARA mcast_snooping_add_group() failed, group_get_lru");
                 return false;
             }
             mcast_snooping_flush_group(ms, grp);
@@ -451,6 +464,7 @@ mcast_snooping_add_group(struct mcast_snooping *ms,
         ms->need_revalidate = true;
         COVERAGE_INC(mcast_snooping_learned);
     } else {
+        VLOG_INFO("DEBUG DCEARA mcast_snooping_add_group() already exists");
         ovs_list_remove(&grp->group_node);
     }
     mcast_group_insert_bundle(ms, grp, port, ms->idle_time);
@@ -485,9 +499,12 @@ mcast_snooping_add_report(struct mcast_snooping *ms,
     int count = 0;
     int ngrp;
 
+    VLOG_INFO("DEBUG DCEARA mcast_snooping_add_report()");
+
     offset = (char *) dp_packet_l4(p) - (char *) dp_packet_data(p);
     igmpv3 = dp_packet_at(p, offset, IGMPV3_HEADER_LEN);
     if (!igmpv3) {
+        VLOG_INFO("DEBUG DCEARA mcast_snooping_add_report(), failed !igmpv3");
         return 0;
     }
     ngrp = ntohs(igmpv3->ngrp);
@@ -496,11 +513,13 @@ mcast_snooping_add_report(struct mcast_snooping *ms,
         bool ret;
         record = dp_packet_at(p, offset, sizeof(struct igmpv3_record));
         if (!record) {
+            VLOG_INFO("DEBUG DCEARA mcast_snooping_add_report(), failed !record");
             break;
         }
         /* Only consider known record types. */
         if (record->type < IGMPV3_MODE_IS_INCLUDE
             || record->type > IGMPV3_BLOCK_OLD_SOURCES) {
+            VLOG_INFO("DEBUG DCEARA mcast_snooping_add_report(), failed unknown record type");
             continue;
         }
         ip4 = get_16aligned_be32(&record->maddr);
@@ -511,11 +530,14 @@ mcast_snooping_add_report(struct mcast_snooping *ms,
         if (ntohs(record->nsrcs) == 0
             && (record->type == IGMPV3_MODE_IS_INCLUDE
                 || record->type == IGMPV3_CHANGE_TO_INCLUDE_MODE)) {
+            VLOG_INFO("DEBUG DCEARA mcast_snooping_add_report("IP_FMT"), leave group", IP_ARGS(ip4));
             ret = mcast_snooping_leave_group4(ms, ip4, vlan, port);
         } else {
+            VLOG_INFO("DEBUG DCEARA mcast_snooping_add_report("IP_FMT"), add group", IP_ARGS(ip4));
             ret = mcast_snooping_add_group4(ms, ip4, vlan, port,
                                             MCAST_GROUP_IGMPV3);
         }
+        VLOG_INFO("DEBUG DCEARA mcast_snooping_add_report("IP_FMT"), ret %d", IP_ARGS(ip4), ret);
         if (ret) {
             count++;
         }
