@@ -49,7 +49,7 @@ COVERAGE_DEFINE(vconn_buffered);
  * desirable for the input for performance reasons.  We use 2x that size
  * to improve batching capacity. */
 #define VCONN_BUFFER_SIZE \
-    ((1 << (MEMBER_SIZEOF(struct ofp_header, length) * 8)) * 2)
+    ((1 << (MEMBER_SIZEOF(struct ofp_header, length) * 8)) * 4)
 
 struct vconn_stream
 {
