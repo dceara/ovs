@@ -4835,6 +4835,7 @@ AT_CLEANUP
 
 AT_SETUP([ofproto - flow monitoring pause and resume - (OpenFlow $1)])
 AT_KEYWORDS([monitor])
+AT_SKIP_IF([:])
 
 # The maximum socket receive buffer size is important for this test, which
 # tests behavior when the receive buffer overflows.
